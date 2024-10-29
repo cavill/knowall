@@ -1,0 +1,12 @@
+{
+  "public": {
+    "googleBooks": {
+      "apiKey": "YOUR_GOOGLE_BOOKS_API_KEY"
+    }
+  },
+  "private": {
+    "openai": {
+      "apiKey": "YOUR_OPENAI_API_KEY"
+    }
+  }
+} 
