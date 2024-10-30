@@ -69,22 +69,20 @@ export const BookPage = () => {
     return (
       <div className="recommendations-container">
         <ul className="recommendations-list">
-          {book.recommendations.map((rec, index) => {
-            const recommendedBook = recommendedBooks.find(b => b._id === rec.bookId);
-            return (
-              <li key={index} className="recommendation-item">
-                <div className="recommendation-title">
-                  <Link to={`/book/${rec.bookId}`}>
-                    {rec.title} by {rec.author}
-                  </Link>
-                </div>
-                {rec.reason && <div className="recommendation-reason">{rec.reason}</div>}
-                <div className="recommendation-source">
-                  Recommended by: {rec.recommendedBy.type === 'ai' ? 'AI Assistant' : `User ${rec.recommendedBy.userId}`}
-                </div>
-              </li>
-            );
-          })}
+          {book.recommendations.map((rec, index) => (
+            <li key={index} className="recommendation-item">
+              {rec.thumbnail && <img src={rec.thumbnail} alt={rec.title} />}
+              <div className="recommendation-title">
+                <Link to={`/book/${rec.bookId}`}>
+                  {rec.title} by {rec.author}
+                </Link>
+              </div>
+              <div className="recommendation-reason">{rec.reason}</div>
+              <div className="recommendation-source">
+                Recommended by: {rec.recommendedBy.type === 'ai' ? 'AI Assistant' : `User ${rec.recommendedBy.userId}`}
+              </div>
+            </li>
+          ))}
         </ul>
       </div>
     );

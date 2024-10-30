@@ -39,6 +39,7 @@ export const SuggestBook = ({ bookId }) => {
         bookId: suggestedBookId,
         title: book.title,
         author: book.author,
+        thumbnail: book.thumbnail,
         recommendedBy: {
           type: 'user',
           userId: Meteor.userId()
@@ -70,20 +71,24 @@ export const SuggestBook = ({ bookId }) => {
       </div>
 
       <div className="search-results">
-        {searchResults.map((item) => (
-          <div key={item.id} className="book-result">
-            {item.volumeInfo.imageLinks?.thumbnail && 
-              <img src={item.volumeInfo.imageLinks.thumbnail} alt={item.volumeInfo.title} />
-            }
-            <div>
-              <h4>{item.volumeInfo.title}</h4>
-              <p>{item.volumeInfo.authors?.[0] || 'Unknown Author'}</p>
-              <button onClick={() => handleSuggest(item)}>
-                Suggest This Book
-              </button>
+        {searchResults.map((item) => {
+          const thumbnail = item.volumeInfo.imageLinks?.thumbnail;
+          const title = item.volumeInfo.title;
+          const author = item.volumeInfo.authors?.[0] || 'Unknown Author';
+
+          return (
+            <div key={item.id} className="book-result">
+              {thumbnail && <img src={thumbnail} alt={title} />}
+              <div>
+                <h4>{title}</h4>
+                <p>{author}</p>
+                <button onClick={() => handleSuggest(item)}>
+                  Suggest This Book
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

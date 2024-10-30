@@ -6,6 +6,15 @@ const openai = new OpenAI({
   apiKey: Meteor.settings.private.openai.apiKey
 });
 
+const getGoogleBookData = async (title, author) => {
+  const response = await fetch(
+    `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title + ' ' + author)}`
+  );
+  const data = await response.json();
+  const book = data.items?.[0];
+  return book?.volumeInfo?.imageLinks?.thumbnail || '';
+};
+
 export const generateRecommendations = async (book) => {
   console.log('Starting AI recommendations for:', book.title);
   
@@ -75,13 +84,15 @@ Important guidelines:
       }
       
       // Process each recommendation
-      const aiRecommendations = await Promise.all(parsed.recommendations.map(async rec => {
+      const aiRecommendations = await Promise.all(parsed.recommendations.map(async (rec) => {
+        const thumbnail = await getGoogleBookData(rec.title, rec.author);
+        
         // Create a book record for the recommendation with the correct title and author
         const bookData = {
           googleId: `ai_${Date.now()}_${Math.random()}`,
           title: rec.title,
           author: rec.author,
-          thumbnail: '',
+          thumbnail,
           description: '',
           publishedDate: ''
         };
@@ -92,6 +103,7 @@ Important guidelines:
           bookId,
           title: rec.title,
           author: rec.author,
+          thumbnail,
           recommendedBy: {
             type: 'ai'
           },

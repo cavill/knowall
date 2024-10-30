@@ -94,6 +94,7 @@ Meteor.methods({
       bookId: String,
       title: String,
       author: String,
+      thumbnail: String,
       recommendedBy: Object,
       reason: String,
       createdAt: Date
