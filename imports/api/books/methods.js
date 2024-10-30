@@ -4,70 +4,43 @@ import { Books } from './books';
 import { generateRecommendations } from '../ai/recommendations';
 
 Meteor.methods({
-  async 'books.createFromGoogle'(bookData) {
-    check(bookData, {
-      title: String,
-      author: String,
-      description: String,
-      year: Match.Maybe(Match.Integer),
-      thumbnail: Match.Maybe(String),
-      googleBooksId: String
-    });
+  async 'books.reset'() {
+    if (!Meteor.isDevelopment) {
+      throw new Meteor.Error('not-allowed', 'Reset only allowed in development');
+    }
+    return await Books.removeAsync({});
+  },
 
-    console.log('Creating/finding book:', bookData.title);
-
+  async 'books.createFromGoogle'(googleBookData, isRecommendation = false) {
     try {
-      // Check if book already exists
-      const existingBook = await Books.findOneAsync({ googleBooksId: bookData.googleBooksId });
+      check(googleBookData, Match.ObjectIncluding({
+        googleId: String,
+        title: String,
+        author: String,
+        thumbnail: Match.Optional(String),
+        description: Match.Optional(String),
+        publishedDate: Match.Optional(String)
+      }));
+
+      // Try to find existing book first
+      const existingBook = await Books.findOneAsync({ googleId: googleBookData.googleId });
       if (existingBook) {
-        console.log('Book already exists, checking recommendations');
-        
-        // If the book exists but has no recommendations, generate them
-        if (!existingBook.recommendations) {
-          console.log('No recommendations found, generating new ones');
-          Meteor.defer(async () => {
-            try {
-              const recommendations = await generateRecommendations(bookData);
-              await Books.updateAsync(existingBook._id, {
-                $set: { recommendations }
-              });
-              console.log('Updated existing book with new recommendations');
-            } catch (error) {
-              console.error('Error generating recommendations for existing book:', error);
-            }
-          });
-        }
-        
         return existingBook._id;
       }
 
       // Create new book
       const bookId = await Books.insertAsync({
-        ...bookData,
+        ...googleBookData,
         createdAt: new Date(),
-        recommendations: null
-      });
-
-      console.log('Created new book:', bookId);
-
-      // Generate AI recommendations asynchronously
-      Meteor.defer(async () => {
-        console.log('Starting AI recommendations generation for new book:', bookId);
-        try {
-          const recommendations = await generateRecommendations(bookData);
-          await Books.updateAsync(bookId, {
-            $set: { recommendations }
-          });
-          console.log('Updated new book with recommendations');
-        } catch (error) {
-          console.error('Error generating recommendations:', error);
-        }
+        recommendations: [],
+        recommendedFor: [],
+        isRecommendation
       });
 
       return bookId;
     } catch (error) {
-      console.error('Server error creating book:', error);
-      throw new Meteor.Error('create-error', 'Failed to create book: ' + error.message);
+      console.error('Error in books.createFromGoogle:', error);
+      throw new Meteor.Error('create-book-failed', error.message);
     }
   },
 
@@ -100,27 +73,85 @@ Meteor.methods({
     }
   },
 
-  async 'books.regenerateRecommendations'(bookId) {
+  'books.regenerateRecommendations': async function(bookId) {
     check(bookId, String);
+    
+    const book = await Books.findOneAsync(bookId);
+    if (!book) throw new Meteor.Error('book-not-found');
 
-    try {
-      const book = await Books.findOneAsync(bookId);
-      if (!book) {
-        throw new Meteor.Error('not-found', 'Book not found');
-      }
-
-      console.log('Regenerating recommendations for book:', book.title);
-      const recommendations = await generateRecommendations(book);
-      
-      await Books.updateAsync(bookId, {
-        $set: { recommendations }
-      });
-      
-      console.log('Successfully regenerated recommendations');
-      return recommendations;
-    } catch (error) {
-      console.error('Error regenerating recommendations:', error);
-      throw new Meteor.Error('regenerate-error', 'Failed to regenerate recommendations');
+    // Add this check to prevent regenerating if recommendations exist
+    if (book.recommendations && book.recommendations.length > 0) {
+      return book.recommendations;
     }
+
+    console.log('Regenerating recommendations for book:', book.title);
+    return generateRecommendations(book);
+  },
+
+  async 'books.addRecommendation'(bookId, recommendation) {
+    check(bookId, String);
+    check(recommendation, {
+      bookId: String,
+      title: String,
+      author: String,
+      recommendedBy: Object,
+      reason: String,
+      createdAt: Date
+    });
+
+    return Books.updateAsync(bookId, {
+      $push: { recommendations: recommendation }
+    });
+  },
+
+  async 'debug.getBook'(bookId) {
+    const book = await Books.findOneAsync(bookId);
+    console.log('Book structure:', book);
+    return book;
+  },
+
+  async 'debug.showBook'(bookId) {
+    const book = await Books.findOneAsync(bookId);
+    console.log('Book data:', JSON.stringify(book, null, 2));
+    return book;
+  },
+
+  async 'debug.listBooks'() {
+    try {
+      console.log('Attempting to find books...');
+      const books = await Books.find({}).fetchAsync();
+      console.log('Found books count:', books.length);
+      console.log('First few books:', JSON.stringify(books.slice(0, 3), null, 2));
+      return books;
+    } catch (error) {
+      console.error('Error listing books:', error);
+      return [];
+    }
+  },
+
+  async 'debug.addTestBook'() {
+    try {
+      const testBook = {
+        googleId: 'test123',
+        title: 'Test Book',
+        author: 'Test Author',
+        thumbnail: '',
+        description: 'A test book',
+        publishedDate: '2023',
+        recommendations: []
+      };
+      
+      const id = await Books.insertAsync(testBook);
+      console.log('Added test book with ID:', id);
+      return id;
+    } catch (error) {
+      console.error('Error adding test book:', error);
+      return null;
+    }
+  },
+
+  'books.debug'(bookId) {
+    check(bookId, String);
+    return Books.findOne(bookId);
   }
 });

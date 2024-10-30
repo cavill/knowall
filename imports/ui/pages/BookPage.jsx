@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTracker } from 'meteor/react-meteor-data';
 import { Books } from '/imports/api/books/books';
+import { SuggestBook } from '../components/SuggestBook';
 
 export const BookPage = () => {
   const { id } = useParams();
@@ -15,6 +16,28 @@ export const BookPage = () => {
       isLoading: !handle.ready(),
     };
   });
+
+  const { recommendedBooks } = useTracker(() => {
+    if (!book?.recommendations) return { recommendedBooks: [] };
+    
+    const bookIds = book.recommendations.map(rec => rec.bookId);
+    Meteor.subscribe('recommendedBooks', bookIds);
+    
+    return {
+      recommendedBooks: Books.find({ _id: { $in: bookIds } }).fetch()
+    };
+  });
+
+  useEffect(() => {
+    // Only generate recommendations for primary books that have no recommendations
+    if (book && !book.isRecommendation && (!book.recommendations || book.recommendations.length === 0)) {
+      Meteor.call('books.regenerateRecommendations', id, (error) => {
+        if (error) {
+          console.error('Error generating initial recommendations:', error);
+        }
+      });
+    }
+  }, [book]);
 
   const handleRegenerateRecommendations = async () => {
     setIsRegenerating(true);
@@ -30,8 +53,42 @@ export const BookPage = () => {
     }
   };
 
-  // Check if recommendations failed (contains the error message)
-  const hasFailedRecommendations = book?.recommendations?.books?.[0] === "Unable to generate book recommendations";
+  const renderRecommendations = () => {
+    if (!book.recommendations || book.recommendations.length === 0) {
+      // Only generate if we haven't already started
+      if (!isRegenerating) {
+        setIsRegenerating(true);
+        Meteor.call('books.regenerateRecommendations', id, (error) => {
+          if (error) console.error(error);
+          setIsRegenerating(false);
+        });
+      }
+      return null;
+    }
+
+    return (
+      <div className="recommendations-container">
+        <ul className="recommendations-list">
+          {book.recommendations.map((rec, index) => {
+            const recommendedBook = recommendedBooks.find(b => b._id === rec.bookId);
+            return (
+              <li key={index} className="recommendation-item">
+                <div className="recommendation-title">
+                  <Link to={`/book/${rec.bookId}`}>
+                    {rec.title} by {rec.author}
+                  </Link>
+                </div>
+                {rec.reason && <div className="recommendation-reason">{rec.reason}</div>}
+                <div className="recommendation-source">
+                  Recommended by: {rec.recommendedBy.type === 'ai' ? 'AI Assistant' : `User ${rec.recommendedBy.userId}`}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -73,56 +130,12 @@ export const BookPage = () => {
       </div>
 
       <div className="recommendations-section">
-        <h2>Recommended for you</h2>
-        
-        {!book.recommendations ? (
-          <div className="loading-recommendations">
-            <div className="loading-spinner"></div>
-            <p>AI is generating personalized recommendations...</p>
-            <p className="loading-note">This may take a few moments</p>
-          </div>
-        ) : hasFailedRecommendations ? (
-          <div className="failed-recommendations">
-            <p>Unable to generate recommendations.</p>
-            <button 
-              onClick={handleRegenerateRecommendations}
-              disabled={isRegenerating}
-              className="regenerate-button"
-            >
-              {isRegenerating ? 'Generating...' : 'Try Again'}
-            </button>
-            {error && <div className="error-message">{error}</div>}
-          </div>
-        ) : (
-          <div className="recommendations-grid">
-            <div className="recommendation-category">
-              <h3>Similar Books</h3>
-              <ul>
-                {book.recommendations.books?.map((rec, index) => (
-                  <li key={`book-${index}`}>{rec}</li>
-                ))}
-              </ul>
-            </div>
+        <h2>Recommended Books</h2>
+        {renderRecommendations()}
+      </div>
 
-            <div className="recommendation-category">
-              <h3>Movies & TV Shows</h3>
-              <ul>
-                {book.recommendations.visualMedia?.map((rec, index) => (
-                  <li key={`media-${index}`}>{rec}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="recommendation-category">
-              <h3>Podcasts & Audiobooks</h3>
-              <ul>
-                {book.recommendations.audio?.map((rec, index) => (
-                  <li key={`audio-${index}`}>{rec}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
+      <div className="suggest-section">
+        <SuggestBook bookId={id} />
       </div>
     </div>
   );

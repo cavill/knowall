@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { Meteor } from 'meteor/meteor';
+import { Books } from '../books/books';
 
 const openai = new OpenAI({
   apiKey: Meteor.settings.private.openai.apiKey
@@ -9,20 +10,32 @@ export const generateRecommendations = async (book) => {
   console.log('Starting AI recommendations for:', book.title);
   
   try {
-    const prompt = `Based on the book "${book.title}" by ${book.author}, which is about: ${book.description}
-    Please recommend:
-    1. Three similar books that readers might enjoy
-    2. Two movies or TV shows that have a similar theme or style
-    3. One podcast or audiobook that relates to this topic
+    const prompt = `Given the book "${book.title}" by ${book.author}, which is about: ${book.description} suggest between 1 and 5 RELATED books, which could be considered further reading.
+
+Consider themes, writing style, and subject matter. Focus on books that share meaningful connections with "${book.title}" and EXPAND upon the topics covered in the original. For instance, for a book about the opioid crisis you might recommend another about the origins of opium. Only include books you're confident are strong recommendations
+
+Important guidelines:
+    - Only include books you're confident are strong recommendations
+    - Focus on quality matches over quantity
+    - Consider themes, writing style, and subject matter
+    - Each recommendation should have a clear connection to "${book.title}"
+    - Do NOT recommend "${book.title}"
     
-    Format your response EXACTLY like this JSON structure:
+    For each book, provide:
+    1. The title
+    2. The author
+    3. A specific reason why this book connects to "${book.title}"
+    
+    Return ONLY a JSON object with no markdown or other formatting, like this:
     {
-      "books": ["Book 1", "Book 2", "Book 3"],
-      "visualMedia": ["Movie/Show 1", "Movie/Show 2"],
-      "audio": ["Podcast/Audiobook"]
-    }
-    
-    Ensure the response is valid JSON with no trailing commas.`;
+      "recommendations": [
+        {
+          "title": "Book Title",
+          "author": "Author Name",
+          "reason": "Specific explanation of the connection"
+        }
+      ]
+    }`;
 
     console.log('Sending prompt to OpenAI');
 
@@ -31,7 +44,7 @@ export const generateRecommendations = async (book) => {
       messages: [
         { 
           role: "system", 
-          content: "You are a helpful assistant that always responds with valid JSON." 
+          content: "You are a knowledgeable librarian who provides between 1 and 5 thoughtful 'further reaading' recommendations." 
         },
         { 
           role: "user", 
@@ -45,37 +58,93 @@ export const generateRecommendations = async (book) => {
     console.log('Raw AI response:', aiResponse);
 
     // Clean the response before parsing
-    const cleanedResponse = aiResponse.trim();
+    let cleanedResponse = aiResponse.trim();
+    
+    // Remove markdown code blocks if present
+    cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     
     try {
-      const recommendations = JSON.parse(cleanedResponse);
+      const parsed = JSON.parse(cleanedResponse);
       
       // Validate the structure
-      if (!recommendations.books || !Array.isArray(recommendations.books) ||
-          !recommendations.visualMedia || !Array.isArray(recommendations.visualMedia) ||
-          !recommendations.audio || !Array.isArray(recommendations.audio)) {
-        throw new Error('Invalid recommendation structure');
+      if (!parsed.recommendations || 
+          !Array.isArray(parsed.recommendations) || 
+          parsed.recommendations.length === 0 || 
+          parsed.recommendations.length > 5) {
+        throw new Error('Invalid recommendation structure - must have 1-5 recommendations');
       }
       
-      return recommendations;
+      // Process each recommendation
+      const aiRecommendations = await Promise.all(parsed.recommendations.map(async rec => {
+        // Create a book record for the recommendation with the correct title and author
+        const bookData = {
+          googleId: `ai_${Date.now()}_${Math.random()}`,
+          title: rec.title,
+          author: rec.author,
+          thumbnail: '',
+          description: '',
+          publishedDate: ''
+        };
+
+        const bookId = await Meteor.callAsync('books.createFromGoogle', bookData);
+
+        const recommendation = {
+          bookId,
+          title: rec.title,
+          author: rec.author,
+          recommendedBy: {
+            type: 'ai'
+          },
+          reason: rec.reason,
+          createdAt: new Date()
+        };
+
+        const recommendedFor = {
+          bookId: book._id,
+          recommendedBy: {
+            type: 'ai'
+          },
+          reason: rec.reason,
+          createdAt: new Date()
+        };
+
+        // Add to source book's recommendations
+        await Books.updateAsync(book._id, {
+          $push: { recommendations: recommendation }
+        });
+
+        // Add to recommended book's recommendedFor
+        await Books.updateAsync(bookId, {
+          $push: { recommendedFor: recommendedFor }
+        });
+
+        return recommendation;
+      }));
+
+      return aiRecommendations;
+
     } catch (parseError) {
       console.error('JSON Parse Error:', parseError);
       console.log('Failed to parse:', cleanedResponse);
       
-      // Return a fallback structure
-      return {
-        books: ["Unable to generate book recommendations"],
-        visualMedia: ["Unable to generate media recommendations"],
-        audio: ["Unable to generate audio recommendations"]
-      };
+      return [{
+        bookId: null,
+        recommendedBy: {
+          type: 'ai'
+        },
+        reason: "Error processing AI response",
+        createdAt: new Date()
+      }];
     }
   } catch (error) {
     console.error('Error in generateRecommendations:', error);
-    // Instead of throwing, return fallback recommendations
-    return {
-      books: ["Unable to generate book recommendations"],
-      visualMedia: ["Unable to generate media recommendations"],
-      audio: ["Unable to generate audio recommendations"]
-    };
+    return [{
+      bookId: null,
+      recommendedBy: {
+        type: 'ai'
+      },
+      reason: "Error contacting AI service",
+      createdAt: new Date()
+    }];
   }
 }; 

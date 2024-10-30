@@ -480,3 +480,70 @@ button:hover {
 .nav-button:hover {
   background: rgba(255, 255, 255, 0.1);
 }
+
+/* Add this to your main CSS file */
+
+.recommendations-container {
+  margin-top: 2rem;
+}
+
+.recommendations-list {
+  list-style: none;
+  padding: 0;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.recommendation-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #e9ecef;
+  transition: transform 0.2s ease;
+}
+
+.recommendation-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.recommendation-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  color: #2c3e50;
+}
+
+.recommendation-reason {
+  color: #495057;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.recommendation-source {
+  font-size: 0.9rem;
+  color: #6c757d;
+  border-top: 1px solid #e9ecef;
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.regenerate-button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.regenerate-button:disabled {
+  background: #ccc;
+}
+
+.error-message {
+  color: #dc3545;
+  margin-top: 0.5rem;
+}

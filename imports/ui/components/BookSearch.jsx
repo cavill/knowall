@@ -22,13 +22,12 @@ export const BookSearch = () => {
         `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&key=${apiKey}`
       );
       const books = response.data.items.map(item => ({
+        googleId: item.id,
         title: item.volumeInfo.title,
         author: item.volumeInfo.authors ? item.volumeInfo.authors[0] : 'Unknown',
         description: item.volumeInfo.description || 'No description available',
-        year: item.volumeInfo.publishedDate ? 
-          parseInt(item.volumeInfo.publishedDate.substring(0, 4)) : null,
-        thumbnail: item.volumeInfo.imageLinks?.thumbnail,
-        googleBooksId: item.id
+        publishedDate: item.volumeInfo.publishedDate || '',
+        thumbnail: item.volumeInfo.imageLinks?.thumbnail
       }));
       setResults(books);
     } catch (error) {
