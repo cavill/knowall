@@ -2,6 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { Books } from '/imports/api/books/books';
 import '/imports/api/books/server/publications';
 import '/imports/api/books/methods';
+import '/imports/api/users/methods';
 
 Meteor.startup(async () => {
   if (!Meteor.settings.private?.openai?.apiKey) {

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useUser } from '@clerk/clerk-react';
 
 export const SuggestBook = ({ bookId }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useUser();
 
   const searchGoogleBooks = async () => {
     if (!searchQuery.trim()) return;
@@ -14,7 +16,6 @@ export const SuggestBook = ({ bookId }) => {
         `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}`
       );
       const data = await response.json();
-      
       setSearchResults(data.items || []);
     } catch (error) {
       console.error('Search error:', error);
@@ -24,6 +25,11 @@ export const SuggestBook = ({ bookId }) => {
   };
 
   const handleSuggest = async (item) => {
+    if (!user) {
+      alert('Please sign in to suggest books');
+      return;
+    }
+
     try {
       const book = {
         googleId: item.id,
@@ -42,7 +48,7 @@ export const SuggestBook = ({ bookId }) => {
         thumbnail: book.thumbnail,
         recommendedBy: {
           type: 'user',
-          userId: Meteor.userId()
+          userId: user.id
         },
         reason: '',
         createdAt: new Date()
@@ -71,24 +77,20 @@ export const SuggestBook = ({ bookId }) => {
       </div>
 
       <div className="search-results">
-        {searchResults.map((item) => {
-          const thumbnail = item.volumeInfo.imageLinks?.thumbnail;
-          const title = item.volumeInfo.title;
-          const author = item.volumeInfo.authors?.[0] || 'Unknown Author';
-
-          return (
-            <div key={item.id} className="book-result">
-              {thumbnail && <img src={thumbnail} alt={title} />}
-              <div>
-                <h4>{title}</h4>
-                <p>{author}</p>
-                <button onClick={() => handleSuggest(item)}>
-                  Suggest This Book
-                </button>
-              </div>
+        {searchResults.map((item) => (
+          <div key={item.id} className="book-result">
+            {item.volumeInfo.imageLinks?.thumbnail && 
+              <img src={item.volumeInfo.imageLinks.thumbnail} alt={item.volumeInfo.title} />
+            }
+            <div>
+              <h4>{item.volumeInfo.title}</h4>
+              <p>{item.volumeInfo.authors?.[0] || 'Unknown Author'}</p>
+              <button onClick={() => handleSuggest(item)}>
+                Suggest This Book
+              </button>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );

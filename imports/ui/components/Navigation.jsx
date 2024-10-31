@@ -1,14 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { SignInButton, useUser } from '@clerk/clerk-react';
 
 export const Navigation = () => {
-  const user = Meteor.user();
-  const userEmail = user?.emails?.[0]?.address;
+  const { user, isLoaded } = useUser();
+  const userEmail = user?.emailAddresses[0]?.emailAddress;
 
   const handleLogout = () => {
-    Meteor.logout(error => {
-      if (error) console.error('Logout error:', error);
-    });
+    // We'll update this to use Clerk's signOut
   };
 
   return (
@@ -20,13 +19,15 @@ export const Navigation = () => {
         <div className="nav-links">
           <Link to="/">Home</Link>
           <Link to="/search">Search</Link>
-          {user ? (
-            <>
-              <span className="user-email">{userEmail}</span>
-              <button onClick={handleLogout} className="nav-button">Logout</button>
-            </>
-          ) : (
-            <Link to="/auth" className="nav-button">Login / Register</Link>
+          {isLoaded && (
+            user ? (
+              <>
+                <span className="user-email">{userEmail}</span>
+                <button onClick={handleLogout} className="nav-button">Logout</button>
+              </>
+            ) : (
+              <SignInButton mode="modal" />
+            )
           )}
         </div>
       </div>

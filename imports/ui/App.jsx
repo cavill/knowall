@@ -4,19 +4,20 @@ import { Navigation } from './components/Navigation';
 import { BookSearch } from './components/BookSearch';
 import { BookPage } from './pages/BookPage';
 import { Home } from './pages/Home';
-import { UserAuth } from './components/UserAuth';
+import { ClerkWrapper } from './ClerkProvider';
 
 export const App = () => {
   return (
-    <Router>
-      <div className="app-container">
-        <Navigation />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/book/:id" element={<BookPage />} />
-          <Route path="/auth" element={<UserAuth />} />
-        </Routes>
-      </div>
-    </Router>
+    <ClerkWrapper>
+      <Router>
+        <div className="app-container">
+          <Navigation />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/book/:id" element={<BookPage />} />
+          </Routes>
+        </div>
+      </Router>
+    </ClerkWrapper>
   );
 };

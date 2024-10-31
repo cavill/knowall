@@ -154,5 +154,26 @@ Meteor.methods({
   'books.debug'(bookId) {
     check(bookId, String);
     return Books.findOne(bookId);
+  },
+
+  'books.updateRecommendationReason'(bookId, recommendationBookId, reason) {
+    if (!this.userId) {
+      throw new Meteor.Error('not-authorized');
+    }
+    
+    check(bookId, String);
+    check(recommendationBookId, String);
+    check(reason, String);
+
+    return Books.updateAsync(
+      { 
+        _id: bookId, 
+        'recommendations.bookId': recommendationBookId,
+        'recommendations.recommendedBy.userId': this.userId 
+      },
+      { 
+        $set: { 'recommendations.$.reason': reason }
+      }
+    );
   }
 });

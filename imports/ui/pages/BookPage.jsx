@@ -3,11 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import { useTracker } from 'meteor/react-meteor-data';
 import { Books } from '/imports/api/books/books';
 import { SuggestBook } from '../components/SuggestBook';
+import { useUser } from '@clerk/clerk-react';
+import { ClerkUserName } from '../components/ClerkUserName';
 
 export const BookPage = () => {
   const { id } = useParams();
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [error, setError] = useState(null);
+  const { user } = useUser();
   
   const { book, isLoading } = useTracker(() => {
     const handle = Meteor.subscribe('book', id);
@@ -77,9 +80,24 @@ export const BookPage = () => {
                   {rec.title} by {rec.author}
                 </Link>
               </div>
-              <div className="recommendation-reason">{rec.reason}</div>
+              <div 
+                className="recommendation-reason"
+                contentEditable={user && rec.recommendedBy.userId === user.id}
+                onBlur={async (e) => {
+                  if (user && rec.recommendedBy.userId === user.id) {
+                    await Meteor.callAsync('books.updateRecommendationReason', 
+                      book._id, 
+                      rec.bookId, 
+                      e.target.textContent
+                    );
+                  }
+                }}
+              >
+                {rec.reason}
+              </div>
               <div className="recommendation-source">
-                Recommended by: {rec.recommendedBy.type === 'ai' ? 'AI Assistant' : `User ${rec.recommendedBy.userId}`}
+                Recommended by: {rec.recommendedBy.type === 'ai' ? 'AI Assistant' : 
+                  <ClerkUserName userId={rec.recommendedBy.userId} />}
               </div>
             </li>
           ))}
