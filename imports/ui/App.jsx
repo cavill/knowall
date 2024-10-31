@@ -5,6 +5,7 @@ import { BookSearch } from './components/BookSearch';
 import { BookPage } from './pages/BookPage';
 import { Home } from './pages/Home';
 import { ClerkWrapper } from './ClerkProvider';
+import { UserProfile } from './pages/UserProfile';
 
 export const App = () => {
   return (
@@ -15,6 +16,7 @@ export const App = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/book/:id" element={<BookPage />} />
+            <Route path="/user/:username" element={<UserProfile />} />
           </Routes>
         </div>
       </Router>
