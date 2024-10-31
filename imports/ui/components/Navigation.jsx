@@ -1,14 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { SignInButton, useUser } from '@clerk/clerk-react';
+import { SignInButton, useUser, UserButton } from '@clerk/clerk-react';
 
 export const Navigation = () => {
   const { user, isLoaded } = useUser();
-  const userEmail = user?.emailAddresses[0]?.emailAddress;
-
-  const handleLogout = () => {
-    // We'll update this to use Clerk's signOut
-  };
 
   return (
     <nav className="navigation">
@@ -22,8 +17,8 @@ export const Navigation = () => {
           {isLoaded && (
             user ? (
               <>
-                <span className="user-email">{userEmail}</span>
-                <button onClick={handleLogout} className="nav-button">Logout</button>
+                <Link to={`/user/${user.username}`}>@{user.username}</Link>
+                <UserButton />
               </>
             ) : (
               <SignInButton mode="modal" />

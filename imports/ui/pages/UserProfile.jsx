@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTracker } from 'meteor/react-meteor-data';
 import { Books } from '/imports/api/books/books';
+import { useUser } from '@clerk/clerk-react';
 
 export const UserProfile = () => {
   const { username } = useParams();
   const [userId, setUserId] = useState(null);
+  const { user: currentUser } = useUser();
+  const isOwnProfile = currentUser?.username === username;
 
   useEffect(() => {
     Meteor.call('users.getUserId', username, (error, result) => {
@@ -48,6 +51,7 @@ export const UserProfile = () => {
   return (
     <div className="user-profile">
       <h2>@{username}'s Recommendations</h2>
+      
       <ul className="recommendations-list">
         {recommendations?.map((rec, index) => (
           <li key={index} className="recommendation-item">
